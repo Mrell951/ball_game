@@ -9,25 +9,28 @@ class Game:
 
     class Background: # Background object
         def __init__(self):
-            self.
+            self.paralax_amount = 0
 
     class Ground: # Ground object
         def __init__(self, side):
             self.side = side
 
-        pass
-
     class Solid_object_template: # Object template for solid objects.
-        pass
+        def __init__(self, sprite, x, y):
+            self.sprite = sprite
+            self.x_pos = x
+            self.y_pos = y
 
-    class Obsticale: # bad objects >:(
+    class Obsticale(Solid_object_template): # bad objects >:( (inherits from Solid_object_template)
         pass
 
     class Block_transition_obj: # Fade in and out effects
-        pass
+        def __init__(self, border):
+            self.border = border
 
     class Particle_obj: # Particle object. It can only be spawned once.
-        pass
+        def __init__(self, x, y, gravity_enabled, gravity_amount):
+            pass
 
     class End_wall: # End wall for completing the level.
         pass
