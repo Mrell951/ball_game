@@ -8,5 +8,8 @@ em so basically this is how a template looks:
 2
 ...end of file
 
+0 - air
 1 – the regular block
-3 – 
+2 - ground
+3 – spike
+4 - half-spike
