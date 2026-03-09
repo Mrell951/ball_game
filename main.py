@@ -21,6 +21,8 @@ class Game:
                 global running
                 running = False
 
+            self.gamer.playerLoop(event)
+
         # Rendering code
         self.screen.fill("white")
 
@@ -37,8 +39,15 @@ class Game:
             self.screen = screen
             self.hitbox = pygame.Rect(50, 480, 64, 64)
 
-        def playerLoop(self):
-            pass
+        def playerLoop(self, e):
+            if e.type == pygame.KEYDOWN: # handle for presses
+                if e.key == pygame.K_SPACE:
+                    print("jump")
+                
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                print("jump")
+ 
+                
 
         def drawPlayer(self):
             pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
