@@ -3,6 +3,12 @@ pygame.init()
 
 running = True
 
+IMAGES = {
+    "Background": "images/background.png",
+    "Player": "images/ball.png",
+    "Spike": "images/spike.png"
+}
+
 class Game:
         # init
     def __init__(self):
@@ -56,6 +62,11 @@ class Game:
             self.gravity_side = 1
             self.falling = 0
             self.screen = screen
+
+            self.rotate_amount = 0
+
+            self.player_img = pygame.image.load(IMAGES["Player"])
+
             self.hitbox = pygame.Rect(50, 400, 64, 64)
 
         def playerLoop(self, e):
@@ -82,7 +93,15 @@ class Game:
             self.hitbox.y += self.y_vel
 
         def drawPlayer(self):
-            pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
+
+            self.rotate_amount -= 7 / ((self.falling / 12) + 1)
+
+            rotated_image = pygame.transform.rotate(self.player_img, self.rotate_amount)
+            new_rect = rotated_image.get_rect(center = self.player_img.get_rect(topleft=(self.hitbox.topleft)).center)
+
+            # pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
+            self.screen.blit(rotated_image, new_rect)
+            
         
     class Background: # Background object
         def __init__(self):
