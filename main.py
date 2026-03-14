@@ -6,7 +6,8 @@ running = True
 IMAGES = {
     "Background": "images/background.png",
     "Player": "images/ball.png",
-    "Spike": "images/spike.png"
+    "Spike": "images/spike.png",
+    "Block": "images/block.png"
 }
 
 class Game:
@@ -22,12 +23,12 @@ class Game:
         self.ground1 = self.Ground(self.screen, 1)
         self.ground2 = self.Ground(self.screen, 2)
 
-        self.block = self.Solid_object_template(9, 1, True)
-        self.block2 = self.Solid_object_template(15, 7, True)
+        self.block = self.Solid_object_template(IMAGES["Block"], 9, 1, True)
+        self.block2 = self.Solid_object_template(IMAGES["Block"], 15, 7, True)
 
         self.bg = self.Background(0)
-        self.bg1 = self.Background(500)
-        self.bg2 = self.Background(890)
+        self.bg1 = self.Background(511)
+        self.bg2 = self.Background(511 * 2)
 
     def mainLoop(self):
         for event in pygame.event.get():
@@ -36,6 +37,9 @@ class Game:
                 running = False
 
             self.gamer.playerLoop(event)
+        
+        fps = self.clock.get_fps()
+        pygame.display.set_caption(f"ball video game - FPS: {fps:.2f}")
 
         self.scroll_x += 7.3
         self.gamer.PlayerPhysics()
@@ -143,8 +147,9 @@ class Game:
             pygame.draw.rect(self.screen, (125, 125, 125), self.hitbox)
 
     class Solid_object_template: # Object template for solid objects.
-        def __init__(self, x, y, snap, hitbox_width=64, hitbox_height=64):
+        def __init__(self, sprite, x, y, snap, hitbox_width=64, hitbox_height=64):
             self.hitbox_width = hitbox_width
+            self.sprite = pygame.image.load(sprite)
             self.hitbox_height = hitbox_height
             grid_size = hitbox_width
 
@@ -165,6 +170,7 @@ class Game:
         
         def draw(self, screen):
             pygame.draw.rect(screen, (64, 64, 100), self.hitbox)
+            screen.blit(self.sprite, self.hitbox)
 
     class Obsticale(Solid_object_template): # bad objects >:( (inherits from Solid_object_template)
         def __init__(self, sprite, x, y, hitbox_width=64, hitbox_height=64):
