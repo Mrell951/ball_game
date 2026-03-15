@@ -71,6 +71,10 @@ class Game:
 
         pygame.display.flip()
         self.clock.tick(60)
+        
+        # Display FPS in window title for monitoring performance
+        fps = self.clock.get_fps()
+        pygame.display.set_caption(f"ball video game - FPS: {fps:.1f}")
 
     class Player: # The player object.
         def __init__(self, screen):
@@ -80,6 +84,7 @@ class Game:
             self.screen = screen
 
             self.rotate_amount = 0
+            self.cached_rotations = {}  # Cache for rotated images to reduce lag
 
             self.player_img = pygame.image.load(IMAGES["Player"])
 
@@ -111,8 +116,19 @@ class Game:
         def drawPlayer(self):
 
             self.rotate_amount -= 7 / ((self.falling / 12) + 1)
+            self.rotate_amount %= 360  # Keep angle between 0-360 to reduce cache size
 
-            rotated_image = pygame.transform.rotate(self.player_img, self.rotate_amount)
+            # Round angle to reduce cache keys and improve performance
+            angle_key = round(self.rotate_amount, 1)
+            
+            if angle_key not in self.cached_rotations:
+                self.cached_rotations[angle_key] = pygame.transform.rotate(self.player_img, angle_key)
+                # Optional: Limit cache size to prevent memory issues
+                if len(self.cached_rotations) > 50:  # Keep only 50 rotations, remove farthest from current
+                    farthest_key = max(self.cached_rotations.keys(), key=lambda k: abs(k - self.rotate_amount))
+                    del self.cached_rotations[farthest_key]
+
+            rotated_image = self.cached_rotations[angle_key]
             new_rect = rotated_image.get_rect(center = self.player_img.get_rect(topleft=(self.hitbox.topleft)).center)
 
             # pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
