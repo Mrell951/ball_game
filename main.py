@@ -23,9 +23,10 @@ class Game:
         self.ground1 = self.Ground(self.screen, 1)
         self.ground2 = self.Ground(self.screen, 2)
 
-        self.block = self.Solid_object_template(IMAGES["Block"], 9, 1, True)
-        self.block2 = self.Solid_object_template(IMAGES["Block"], 15, 7, True)
-
+        self.BLOCKS = [
+            self.Solid_object_template(IMAGES["Block"], 9, 1, True),
+            self.Solid_object_template(IMAGES["Block"], 15, 7, True)
+        ]
         self.bg = self.Background(0)
         self.bg1 = self.Background(511)
         self.bg2 = self.Background(511 * 2)
@@ -44,11 +45,13 @@ class Game:
         self.scroll_x += 7.3
         self.gamer.PlayerPhysics()
 
+        for i in self.BLOCKS:
+            self.gamer.PlayerColision(i.hitbox)
         self.gamer.PlayerColision(self.ground1.hitbox)
         self.gamer.PlayerColision(self.ground2.hitbox)
 
-        self.block.run_loop(self.scroll_x)
-        self.block2.run_loop(self.scroll_x)
+        for i in self.BLOCKS:
+            i.run_loop(self.scroll_x)
 
         self.bg.run_loop()
         self.bg1.run_loop()
@@ -63,8 +66,9 @@ class Game:
         self.bg2.drawLoop(self.screen)
         self.gamer.drawPlayer()
 
-        self.block.draw(self.screen)
-        self.block2.draw(self.screen)
+        for i in self.BLOCKS:
+            i.draw(self.screen)
+        
 
         self.ground1.drawGround()
         self.ground2.drawGround()
@@ -116,9 +120,8 @@ class Game:
         def drawPlayer(self):
 
             self.rotate_amount -= 7 / ((self.falling / 12) + 1)
-            self.rotate_amount %= 360  # Keep angle between 0-360 to reduce cache size
+            self.rotate_amount %= 360
 
-            # Round angle to reduce cache keys and improve performance
             angle_key = round(self.rotate_amount, 1)
             
             if angle_key not in self.cached_rotations:
