@@ -1,4 +1,5 @@
 import pygame
+import cv2
 pygame.init()
 
 running = True
@@ -15,6 +16,9 @@ class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((800, 600))
         self.scroll_x = 0
+
+        self.game_over = False
+
         pygame.display.set_caption("ball video game")
 
         self.clock = pygame.time.Clock()
@@ -27,6 +31,22 @@ class Game:
             self.Solid_object_template(IMAGES["Block"], 9, 1, True),
             self.Solid_object_template(IMAGES["Block"], 15, 7, True)
         ]
+
+        # game over vid
+        video_path = 'gameOver.wmv' # Ensure the file is accessible
+        self.cap = cv2.VideoCapture(video_path)
+        if not self.cap.isOpened():
+            print("video not workie :(")
+            exit()
+
+        success, img = self.cap.read()
+        if not success:
+            print("video not workie. (could not read the file :( )")
+            exit()
+        
+        # set up the shape
+        self.shape = img.shape[1::-1]
+
         self.bg = self.Background(0)
         self.bg1 = self.Background(511)
         self.bg2 = self.Background(511 * 2)
@@ -73,10 +93,22 @@ class Game:
         self.ground1.drawGround()
         self.ground2.drawGround()
 
+        if self.game_over:
+            success, img = self.cap.read()
+            if success:
+                # Convert the OpenCV image (BGR) to Pygame surface (RGB)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                surf = pygame.surfarray.make_surface(img)
+                # OpenCV reads top-to-bottom, Pygame surface is bottom-to-top by default, so we flip
+                surf = pygame.transform.rotate(surf, -90) 
+                surf = pygame.transform.flip(surf, True, False)
+
+                self.screen.blit(surf, (0, 0))
+
         pygame.display.flip()
         self.clock.tick(60)
-        
-        # Display FPS in window title for monitoring performance
+
+        # display the fps
         fps = self.clock.get_fps()
         pygame.display.set_caption(f"ball video game - FPS: {fps:.1f}")
 
@@ -107,9 +139,18 @@ class Game:
 
         def PlayerColision(self, block):
             if self.hitbox.colliderect(block):
-                self.hitbox.y -= self.y_vel
-                self.falling = 0
-                self.y_vel = 0
+                # Calculate overlaps to determine collision direction
+                overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
+                overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
+                
+                if overlap_x < overlap_y:
+                    # Side collision (horizontal)
+                    pass  # Do something special here later
+                else:
+                    # Vertical collision
+                    self.hitbox.y -= self.y_vel
+                    self.falling = 0
+                    self.y_vel = 0
             else:
                 self.falling += 1
                 
@@ -225,4 +266,5 @@ if __name__ == "__main__":
     while running:
         g.mainLoop()
     pygame.quit()
+    g.cap.release()
     exit()
