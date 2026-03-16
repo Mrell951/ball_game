@@ -35,7 +35,7 @@ class Game:
         # game over vid
         self.video_frames = []
         for i in range(12, 211):
-            frame_path = f"images/img_{i:03}.png"
+            frame_path = f"GameOverVid/game over/img_{i:06}.png"
             try:
                 img = pygame.image.load(frame_path)
                 self.video_frames.append(img)
@@ -61,9 +61,10 @@ class Game:
         self.gamer.PlayerPhysics()
 
         for i in self.BLOCKS:
-            self.gamer.PlayerColision(i.hitbox)
-        self.gamer.PlayerColision(self.ground1.hitbox)
-        self.gamer.PlayerColision(self.ground2.hitbox)
+            self.gamer.PlayerColision(i.hitbox, self.game_over)
+            isDead = self.gamer.isDead(self.game_over)
+        self.gamer.PlayerColision(self.ground1.hitbox, game_over_state=False)
+        self.gamer.PlayerColision(self.ground2.hitbox, game_over_state=False)
 
         for i in self.BLOCKS:
             i.run_loop(self.scroll_x)
@@ -88,8 +89,10 @@ class Game:
         self.ground1.drawGround()
         self.ground2.drawGround()
 
-        if self.game_over:
-            pass
+        if isDead:
+            print("game ogre")
+            for i in self.video_frames:
+                self.screen.blit(self.screen, (800, 600))
 
         pygame.display.flip()
         self.clock.tick(60)
@@ -104,6 +107,9 @@ class Game:
             self.gravity_side = 1
             self.falling = 0
             self.screen = screen
+
+            self.overlap_x = 0
+            self.overlap_y = 0
 
             self.rotate_amount = 0
             self.cached_rotations = {}  # Cache for rotated images to reduce lag
@@ -123,15 +129,16 @@ class Game:
                 if self.falling < 3:
                     self.gravity_side *= -1
 
-        def PlayerColision(self, block):
+        def PlayerColision(self, block, game_over_state):
             if self.hitbox.colliderect(block):
                 # Calculate overlaps to determine collision direction
-                overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
-                overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
+                self.overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
+                self.overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
                 
-                if overlap_x < overlap_y:
+                if self.overlap_x < self.overlap_y:
                     # Side collision (horizontal)
-                    pass  # Do something special here later
+                    game_over_state = True
+                    return game_over_state
                 else:
                     # Vertical collision
                     self.hitbox.y -= self.y_vel
@@ -139,7 +146,13 @@ class Game:
                     self.y_vel = 0
             else:
                 self.falling += 1
-                
+
+        def isDead(self, game_over_state): # NOTE: always call this function after the colision or the game will crash
+            if self.overlap_x < self.overlap_y:
+                # Side collision (horizontal)
+                game_over_state = True
+                return game_over_state
+
         def PlayerPhysics(self):
             self.y_vel += 1 * self.gravity_side
             self.hitbox.y += self.y_vel
@@ -154,7 +167,7 @@ class Game:
             if angle_key not in self.cached_rotations:
                 self.cached_rotations[angle_key] = pygame.transform.rotate(self.player_img, angle_key)
                 # Optional: Limit cache size to prevent memory issues
-                if len(self.cached_rotations) > 50:  # Keep only 50 rotations, remove farthest from current
+                if len(self.cached_rotations) > 50:
                     farthest_key = max(self.cached_rotations.keys(), key=lambda k: abs(k - self.rotate_amount))
                     del self.cached_rotations[farthest_key]
 
@@ -252,5 +265,4 @@ if __name__ == "__main__":
     while running:
         g.mainLoop()
     pygame.quit()
-    g.cap.release()
     exit()
