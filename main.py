@@ -1,6 +1,7 @@
 import pygame
-import cv2
+import sys
 pygame.init()
+pygame.mixer.init()
 
 running = True
 
@@ -10,14 +11,17 @@ IMAGES = {
     "Spike": "images/spike.png",
     "Block": "images/block.png"
 }
-
+SOUNDS = {
+    "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3")
+}
 class Game:
         # init
     def __init__(self):
         self.screen = pygame.display.set_mode((800, 600))
         self.scroll_x = 0
-
-        self.game_over = False
+        
+        self.isDead = False
+        self.game_over_sound = True
 
         pygame.display.set_caption("ball video game")
 
@@ -41,6 +45,7 @@ class Game:
                 self.video_frames.append(img)
             except pygame.error:
                 print(f"Could not load {frame_path}")
+        
 
         self.bg = self.Background(0)
         self.bg1 = self.Background(511)
@@ -57,21 +62,23 @@ class Game:
         fps = self.clock.get_fps()
         pygame.display.set_caption(f"ball video game - FPS: {fps:.2f}")
 
-        self.scroll_x += 7.3
-        self.gamer.PlayerPhysics()
+        if not self.isDead:
+            self.scroll_x += 7.3
+            self.gamer.PlayerPhysics()
 
-        for i in self.BLOCKS:
-            self.gamer.PlayerColision(i.hitbox, self.game_over)
-            isDead = self.gamer.isDead(self.game_over)
-        self.gamer.PlayerColision(self.ground1.hitbox, game_over_state=False)
-        self.gamer.PlayerColision(self.ground2.hitbox, game_over_state=False)
+            for i in self.BLOCKS:
+                self.gamer.PlayerColision(i.hitbox)
+                self.isDead = self.gamer.isDead()
+            self.gamer.PlayerColision(self.ground1.hitbox)
+            self.gamer.PlayerColision(self.ground2.hitbox)
 
         for i in self.BLOCKS:
             i.run_loop(self.scroll_x)
 
-        self.bg.run_loop()
-        self.bg1.run_loop()
-        self.bg2.run_loop()
+        if not self.isDead:
+            self.bg.run_loop()
+            self.bg1.run_loop()
+            self.bg2.run_loop()
 
 
         # Rendering code
@@ -89,10 +96,23 @@ class Game:
         self.ground1.drawGround()
         self.ground2.drawGround()
 
-        if isDead:
+        if self.isDead:
             print("game ogre")
-            for i in self.video_frames:
-                self.screen.blit(self.screen, (800, 600))
+            if self.game_over_sound:
+                SOUNDS["Game Over"].play()
+                self.game_over_sound = False
+            # Animate the game over video frame by frame at the top-left corner
+            if not hasattr(self, 'game_over_frame_idx'):
+                self.game_over_frame_idx = 0
+            if self.game_over_frame_idx < len(self.video_frames):
+                self.screen.blit(self.video_frames[round(self.game_over_frame_idx)], (0, 0))
+                self.game_over_frame_idx += 0.7575757575757576
+            else:
+                self.screen.blit(self.video_frames[-1], (0, 0))
+            if round(self.game_over_frame_idx) > 209:
+                running = False
+                pygame.quit()
+                sys.exit()
 
         pygame.display.flip()
         self.clock.tick(60)
@@ -129,25 +149,20 @@ class Game:
                 if self.falling < 3:
                     self.gravity_side *= -1
 
-        def PlayerColision(self, block, game_over_state):
+        def PlayerColision(self, block):
             if self.hitbox.colliderect(block):
                 # Calculate overlaps to determine collision direction
                 self.overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
                 self.overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
                 
-                if self.overlap_x < self.overlap_y:
-                    # Side collision (horizontal)
-                    game_over_state = True
-                    return game_over_state
-                else:
-                    # Vertical collision
-                    self.hitbox.y -= self.y_vel
-                    self.falling = 0
-                    self.y_vel = 0
+                # Vertical collision
+                self.hitbox.y -= self.y_vel
+                self.falling = 0
+                self.y_vel = 0
             else:
                 self.falling += 1
 
-        def isDead(self, game_over_state): # NOTE: always call this function after the colision or the game will crash
+        def isDead(self): # NOTE: always call this function after the colision or the game will crash
             if self.overlap_x < self.overlap_y:
                 # Side collision (horizontal)
                 game_over_state = True
@@ -175,6 +190,8 @@ class Game:
             new_rect = rotated_image.get_rect(center = self.player_img.get_rect(topleft=(self.hitbox.topleft)).center)
 
             # pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
+            if self.isDead():
+                return
             self.screen.blit(rotated_image, new_rect)
             
         
