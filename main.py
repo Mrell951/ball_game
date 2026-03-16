@@ -33,19 +33,14 @@ class Game:
         ]
 
         # game over vid
-        video_path = 'gameOver.wmv' # Ensure the file is accessible
-        self.cap = cv2.VideoCapture(video_path)
-        if not self.cap.isOpened():
-            print("video not workie :(")
-            exit()
-
-        success, img = self.cap.read()
-        if not success:
-            print("video not workie. (could not read the file :( )")
-            exit()
-        
-        # set up the shape
-        self.shape = img.shape[1::-1]
+        self.video_frames = []
+        for i in range(12, 211):
+            frame_path = f"images/img_{i:03}.png"
+            try:
+                img = pygame.image.load(frame_path)
+                self.video_frames.append(img)
+            except pygame.error:
+                print(f"Could not load {frame_path}")
 
         self.bg = self.Background(0)
         self.bg1 = self.Background(511)
@@ -94,16 +89,7 @@ class Game:
         self.ground2.drawGround()
 
         if self.game_over:
-            success, img = self.cap.read()
-            if success:
-                # Convert the OpenCV image (BGR) to Pygame surface (RGB)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                surf = pygame.surfarray.make_surface(img)
-                # OpenCV reads top-to-bottom, Pygame surface is bottom-to-top by default, so we flip
-                surf = pygame.transform.rotate(surf, -90) 
-                surf = pygame.transform.flip(surf, True, False)
-
-                self.screen.blit(surf, (0, 0))
+            pass
 
         pygame.display.flip()
         self.clock.tick(60)
