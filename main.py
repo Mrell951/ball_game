@@ -36,6 +36,10 @@ class Game:
             self.Solid_object_template(IMAGES["Block"], 15, 7, True)
         ]
 
+        self.OBSTICALES = [
+            self.Obsticale(IMAGES["Spike"], 10, 1, True, rotation=6)
+        ]
+
         # game over vid
         self.video_frames = []
         for i in range(12, 211):
@@ -68,11 +72,19 @@ class Game:
 
             for i in self.BLOCKS:
                 self.gamer.PlayerColision(i.hitbox)
-                self.isDead = self.gamer.isDead()
+                self.isDead = self.gamer.isDead(i.hitbox, i)
+            
+            for i in self.OBSTICALES:
+                if self.gamer.hitbox.colliderect(i.hitbox):
+                    self.isDead = self.gamer.kill()
+
             self.gamer.PlayerColision(self.ground1.hitbox)
             self.gamer.PlayerColision(self.ground2.hitbox)
 
         for i in self.BLOCKS:
+            i.run_loop(self.scroll_x)
+
+        for i in self.OBSTICALES:
             i.run_loop(self.scroll_x)
 
         if not self.isDead:
@@ -92,6 +104,8 @@ class Game:
         for i in self.BLOCKS:
             i.draw(self.screen)
         
+        for i in self.OBSTICALES:
+            i.draw(self.screen)
 
         self.ground1.drawGround()
         self.ground2.drawGround()
@@ -153,6 +167,7 @@ class Game:
         def PlayerColision(self, block):
             if self.hitbox.colliderect(block):
                 # Calculate overlaps to determine collision direction
+
                 self.overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
                 self.overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
                 
@@ -163,11 +178,16 @@ class Game:
             else:
                 self.falling += 1
 
-        def isDead(self): # NOTE: always call this function after the colision or the game will crash
-            if self.overlap_x < self.overlap_y:
-                # Side collision (horizontal)
+        def isDead(self, block, obj=None): # NOTE: always call this function after the colision or the game will crash (+ this is only for regular blocks) 
+            if self.overlap_x < self.overlap_y and self.hitbox.right > block.right:
+                # Left side collision only
                 game_over_state = True
                 return game_over_state
+            return False
+        
+        def kill(self): # the most evil function 😈😈😈
+            game_over_state = True
+            return game_over_state 
 
         def PlayerPhysics(self):
             self.y_vel += 1 * self.gravity_side
@@ -191,7 +211,7 @@ class Game:
             new_rect = rotated_image.get_rect(center = self.player_img.get_rect(topleft=(self.hitbox.topleft)).center)
 
             # pygame.draw.rect(self.screen, (255, 0, 0), self.hitbox)
-            if self.isDead():
+            if self.isDead(pygame.Rect(0, 0, 0, 0)):
                 return
             self.screen.blit(rotated_image, new_rect)
             
@@ -238,23 +258,32 @@ class Game:
                 self.x_pos = x
                 self.y_pos = y
 
-            print("grid size:", x * grid_size)
-
             self.hitbox = pygame.Rect(self.x_pos, self.y_pos, self.hitbox_width, self.hitbox_height)
         
         def run_loop(self, scroll_amount):
             self.hitbox.x = (scroll_amount * -1) + self.x_pos
         
         def draw(self, screen):
-            pygame.draw.rect(screen, (64, 64, 100), self.hitbox)
+            # pygame.draw.rect(screen, (64, 64, 100), self.hitbox)
             screen.blit(self.sprite, self.hitbox)
 
     class Obsticale(Solid_object_template): # bad objects >:( (inherits from Solid_object_template)
-        def __init__(self, sprite, x, y, hitbox_width=64, hitbox_height=64):
+        def __init__(self, sprite, x, y, snap, hitbox_width=64, hitbox_height=64, rotation=0):
             super().__init__(sprite, x, y, hitbox_width, hitbox_height)
+            self.hitbox_width = hitbox_width
+            self.sprite = pygame.transform.scale(pygame.image.load(sprite), (hitbox_width, hitbox_height))
+            self.sprite = pygame.transform.rotate(self.sprite, rotation * 90)
+            self.hitbox_height = hitbox_height
+            grid_size = hitbox_width
 
-            self.x_pos = x
-            self.y_pos = y
+            if snap:
+                # Snap x and y to nearest grid position
+                self.x_pos = x * grid_size
+                self.y_pos = y * grid_size
+            else:
+                self.x_pos = x
+                self.y_pos = y
+
 
     class Block_transition_obj: # Fade in and out effects
         def __init__(self, border):

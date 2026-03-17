@@ -1,16 +1,14 @@
 em so basically this is how a template looks:
 ...start of file
 300 – length of the level
-2 – spawn the ground
 0,0,1,1,0,0,0
 0,0,0,0,0,3,0
 0,0,0,0,1,1,0
-2
 ...end of file
 
 0 - air
 1 – the regular block
-2 - ground
+2 - ground (unused cuz the game already spawns the ground :/)
 3 – spike
 4 - half-spike
 
