@@ -97,7 +97,6 @@ class Game:
         self.ground2.drawGround()
 
         if self.isDead:
-            print("game ogre")
             if self.game_over_sound:
                 SOUNDS["Game Over"].play()
                 self.game_over_sound = False
@@ -109,7 +108,9 @@ class Game:
                 self.game_over_frame_idx += 0.7575757575757576
             else:
                 self.screen.blit(self.video_frames[-1], (0, 0))
-            if round(self.game_over_frame_idx) > 209:
+            
+            print(self.game_over_frame_idx)
+            if round(self.game_over_frame_idx) > 189:
                 running = False
                 pygame.quit()
                 sys.exit()
