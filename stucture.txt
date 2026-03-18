@@ -11,6 +11,7 @@ em so basically this is how a template looks:
 2 - ground (unused cuz the game already spawns the ground :/)
 3 – spike
 4 - half-spike
+5 - end wall
 
 additionally: you an specify a param in [].
 params:

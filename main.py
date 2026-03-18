@@ -12,7 +12,8 @@ IMAGES = {
     "Block": "images/block.png"
 }
 SOUNDS = {
-    "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3")
+    "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3"),
+    "Swoosh": pygame.mixer.Sound("Audio/swoosh.wav")
 }
 class Game:
 
@@ -212,6 +213,7 @@ class Game:
             if e.type == pygame.KEYDOWN: # handle for presses
                 if self.falling < 3:
                     if e.key == pygame.K_SPACE:
+                        SOUNDS["Swoosh"].play()
                         self.gravity_side *= -1
                 
             if e.type == pygame.MOUSEBUTTONDOWN:
@@ -348,7 +350,8 @@ class Game:
             pass
 
     class End_wall: # End wall for completing the level.
-        pass
+        def __init__(self, end_pos):
+            self.hitbox = pygame.Rect(end_pos, 0, 128, 600)
 
     class Pause_menu: # The pause menu.
         def __init__(self):
