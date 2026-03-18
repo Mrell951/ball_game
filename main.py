@@ -15,6 +15,58 @@ SOUNDS = {
     "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3")
 }
 class Game:
+
+    class LevelLoader:
+        def __init__(self, filepath, blocks=[], obstacles=[]):
+            self.blocks = blocks
+            self.obstacles = obstacles
+            self.level_length = 0
+            self.load_level(filepath)
+    
+        def load_level(self, filepath):
+            try:
+                with open(filepath, 'r') as f:
+                    lines = f.readlines()
+                    
+                # First line is level length
+                self.level_length = int(lines[0].strip())
+                    
+                # Parse the grid
+                grid_lines = [line.strip() for line in lines[1:] if line.strip()]
+                    
+                for y, line in enumerate(grid_lines):
+                    # Split by comma and process each cell
+                    cells = line.split(',')
+                    for x, cell in enumerate(cells):
+                        cell = cell.strip()
+                            
+                        if not cell or cell == '0':
+                            continue
+                            
+                        # Parse cell with optional parameters
+                        rotation = 0
+                        if '[' in cell:
+                            base_cell = cell[:cell.index('[')]
+                            params = cell[cell.index('[')+1:cell.index(']')]
+                            if params.startswith('rot'):
+                                rotation = int(params.split('-')[1])
+                        else:
+                            base_cell = cell
+                            
+                        base_cell = int(base_cell)
+                            
+                        # 1 = regular block, 3 = spike, 4 = half-spike
+                        if base_cell == 1:
+                            self.blocks.append({"x": x, "y": y, "rotation": rotation})
+                        elif base_cell == 3:
+                            self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "spike"})
+                        elif base_cell == 4:
+                            self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "half-spike"})
+            except FileNotFoundError:
+                print(f"Error: Could not find level file at {filepath}")
+            except Exception as e:
+                print(f"Error loading level: {e}")
+
         # init
     def __init__(self):
         self.screen = pygame.display.set_mode((800, 600))
@@ -31,14 +83,16 @@ class Game:
         self.ground1 = self.Ground(self.screen, 1)
         self.ground2 = self.Ground(self.screen, 2)
 
-        self.BLOCKS = [
-            self.Solid_object_template(IMAGES["Block"], 9, 1, True),
-            self.Solid_object_template(IMAGES["Block"], 15, 7, True)
-        ]
+        self.BLOCKS = []
+        self.OBSTICALES = []
 
-        self.OBSTICALES = [
-            self.Obsticale(IMAGES["Spike"], 10, 1, True, rotation=6)
-        ]
+        self.LevelLoader("level.data", self.BLOCKS, self.OBSTICALES).load_level("level.data")
+        
+        # Convert loaded block dictionaries to Solid_object_template objects
+        self.BLOCKS = [self.Solid_object_template(IMAGES["Block"], b["x"], b["y"], True) for b in self.BLOCKS]
+        
+        # Convert loaded obstacle dictionaries to Obsticale objects
+        self.OBSTICALES = [self.Obsticale(IMAGES["Spike"], o["x"], o["y"], True, rotation=o["rotation"]) for o in self.OBSTICALES]
 
         # game over vid
         self.video_frames = []
@@ -269,7 +323,7 @@ class Game:
 
     class Obsticale(Solid_object_template): # bad objects >:( (inherits from Solid_object_template)
         def __init__(self, sprite, x, y, snap, hitbox_width=64, hitbox_height=64, rotation=0):
-            super().__init__(sprite, x, y, hitbox_width, hitbox_height)
+            super().__init__(sprite, x, y, snap, hitbox_width, hitbox_height)
             self.hitbox_width = hitbox_width
             self.sprite = pygame.transform.scale(pygame.image.load(sprite), (hitbox_width, hitbox_height))
             self.sprite = pygame.transform.rotate(self.sprite, rotation * 90)
