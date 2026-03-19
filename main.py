@@ -248,6 +248,7 @@ class Game:
                 
             if e.type == pygame.MOUSEBUTTONDOWN:
                 if self.falling < 3:
+                    SOUNDS["Swoosh"].play()
                     self.gravity_side *= -1
 
         def PlayerColision(self, block):
@@ -409,6 +410,7 @@ class Game:
 
     class End_level_screen():
         def __init__(self):
+            self.repeats = 0
             self.image = pygame.image.load(IMAGES["End Screen"])
             self.hitbox = pygame.Rect(0, 0, 800, 600)
 
@@ -418,13 +420,13 @@ class Game:
         def appear(self, win_state, screen):
             screen.blit(self.image, self.hitbox)
             
+            print(self.alpha)
+
             if win_state:
                 if self.alpha < 255:
                     self.alpha += 5
-                    # Clamp alpha value to 255 to prevent errors
-                    if self.alpha >= 255:
-                        self.alpha = 255
 
+                    if self.alpha >= 255:
                         pygame.quit()
                         exit()
                         
