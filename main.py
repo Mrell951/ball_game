@@ -9,76 +9,91 @@ IMAGES = {
     "Background": "images/background.png",
     "Player": "images/ball.png",
     "Spike": "images/spike.png",
-    "Block": "images/block.png"
+    "Block": "images/block.png",
+    "End Wall": "images/endWall.png",
+    "End Screen": "images/endScreen.png"
 }
 SOUNDS = {
     "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3"),
-    "Swoosh": pygame.mixer.Sound("Audio/swoosh.wav")
+    "Swoosh": pygame.mixer.Sound("Audio/swoosh.wav"),
+    "Main song": pygame.mixer.Sound("Audio/105753.mp3")
 }
 class Game:
-
     class LevelLoader:
         def __init__(self, filepath, blocks=[], obstacles=[]):
             self.blocks = blocks
             self.obstacles = obstacles
             self.level_length = 0
             self.load_level(filepath)
-    
+
         def load_level(self, filepath):
             try:
                 with open(filepath, 'r') as f:
                     lines = f.readlines()
                     
-                # First line is level length
-                self.level_length = int(lines[0].strip())
+                    # First line is level length
+                    self.level_length = int(lines[0].strip())
                     
-                # Parse the grid
-                grid_lines = [line.strip() for line in lines[1:] if line.strip()]
+                    # Parse the grid
+                    grid_lines = [line.strip().split(',') for line in lines[1:] if line.strip()]
                     
-                for y, line in enumerate(grid_lines):
-                    # Split by comma and process each cell
-                    cells = line.split(',')
-                    for x, cell in enumerate(cells):
-                        cell = cell.strip()
+                    for y, line in enumerate(grid_lines):
+                        # Split by comma and process each cell
+                        for x, cell in enumerate(line):
+                            cell = cell.strip()
                             
-                        if not cell or cell == '0':
-                            continue
+                            if not cell or cell == '0':
+                                continue
                             
-                        # Parse cell with optional parameters
-                        rotation = 0
-                        if '[' in cell:
-                            base_cell = cell[:cell.index('[')]
-                            params = cell[cell.index('[')+1:cell.index(']')]
-                            if params.startswith('rot'):
-                                rotation = int(params.split('-')[1])
-                        else:
-                            base_cell = cell
+                            # Parse cell with optional parameters
+                            rotation = 0
+                            if '[' in cell:
+                                base_cell = cell[:cell.index('[')]
+                                params = cell[cell.index('[')+1:cell.index(']')]
+                                if params.startswith('rot'):
+                                    rotation = int(params.split('-')[1])
+                            else:
+                                base_cell = cell
                             
-                        base_cell = int(base_cell)
+                            base_cell = int(base_cell)
                             
-                        # 1 = regular block, 3 = spike, 4 = half-spike
-                        if base_cell == 1:
-                            self.blocks.append({"x": x, "y": y, "rotation": rotation})
-                        elif base_cell == 3:
-                            self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "spike"})
-                        elif base_cell == 4:
-                            self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "half-spike"})
+                            # 1 = regular block, 3 = spike, 4 = half-spike
+                            if base_cell == 1:
+                                self.blocks.append({"x": x, "y": y, "rotation": rotation})
+                            elif base_cell == 3:
+                                self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "spike"})
+                            elif base_cell == 4:
+                                self.obstacles.append({"x": x, "y": y, "rotation": rotation, "type": "half-spike"})
             except FileNotFoundError:
                 print(f"Error: Could not find level file at {filepath}")
             except Exception as e:
                 print(f"Error loading level: {e}")
+        
+        def return_length(self):
+            return self.level_length
 
         # init
     def __init__(self):
         self.screen = pygame.display.set_mode((800, 600))
+        self.has_won = False
         self.scroll_x = 0
-        
+
+        # loading screen
+        self.screen.fill((0, 0, 0)) # Fill background with black
+        self.font = pygame.font.SysFont('Arial', 40)
+        self.loading_text = self.font.render("Loading...", True, (255, 255, 255))
+        self.text_rect = self.loading_text.get_rect(center=(700, 550))
+        self.screen.blit(self.loading_text, self.text_rect)
+        pygame.display.flip()
+
         self.isDead = False
         self.game_over_sound = True
 
         pygame.display.set_caption("ball video game")
 
         self.clock = pygame.time.Clock()
+
+        self.end_screen = self.End_level_screen()
 
         self.gamer = self.Player(self.screen)
         self.ground1 = self.Ground(self.screen, 1)
@@ -87,8 +102,11 @@ class Game:
         self.BLOCKS = []
         self.OBSTICALES = []
 
-        self.LevelLoader("level.data", self.BLOCKS, self.OBSTICALES).load_level("level.data")
-        
+        self.level_data = self.LevelLoader("level.data", self.BLOCKS, self.OBSTICALES)
+        self.level_data.load_level("level.data")
+        self.length = self.level_data.return_length()
+
+        self.end = self.End_wall(self.length, self.screen)
         # Convert loaded block dictionaries to Solid_object_template objects
         self.BLOCKS = [self.Solid_object_template(IMAGES["Block"], b["x"], b["y"], True) for b in self.BLOCKS]
         
@@ -104,7 +122,9 @@ class Game:
                 self.video_frames.append(img)
             except pygame.error:
                 print(f"Could not load {frame_path}")
-        
+
+        self.main_song = SOUNDS["Main song"].play()        
+
 
         self.bg = self.Background(0)
         self.bg1 = self.Background(511)
@@ -120,6 +140,10 @@ class Game:
         
         fps = self.clock.get_fps()
         pygame.display.set_caption(f"ball video game - FPS: {fps:.2f}")
+
+        self.end.interact(x_scroll=self.scroll_x)
+        self.has_won = self.end.has_won(self.gamer.hitbox)
+        print(self.has_won)
 
         if not self.isDead:
             self.scroll_x += 7.3
@@ -162,12 +186,15 @@ class Game:
         for i in self.OBSTICALES:
             i.draw(self.screen)
 
+        self.end.draw_wall()
+
         self.ground1.drawGround()
         self.ground2.drawGround()
 
         if self.isDead:
             if self.game_over_sound:
                 SOUNDS["Game Over"].play()
+                self.main_song.stop()
                 self.game_over_sound = False
             # Animate the game over video frame by frame at the top-left corner
             if not hasattr(self, 'game_over_frame_idx'):
@@ -183,6 +210,9 @@ class Game:
                 running = False
                 pygame.quit()
                 sys.exit()
+
+        if self.has_won:
+            self.end_screen.appear(self.has_won, self.screen)
 
         pygame.display.flip()
         self.clock.tick(60)
@@ -350,9 +380,22 @@ class Game:
             pass
 
     class End_wall: # End wall for completing the level.
-        def __init__(self, end_pos):
-            self.hitbox = pygame.Rect(end_pos, 0, 128, 600)
+        def __init__(self, end_pos, screen):
+            self.image = pygame.image.load(IMAGES["End Wall"])
+            self.end_pos = end_pos
+            self.screen = screen
+            self.hitbox = pygame.Rect(end_pos, 0, 512, 600)
 
+        def draw_wall(self):
+            self.screen.blit(self.image, self.hitbox)
+
+        def interact(self, x_scroll):
+            self.hitbox.x = (x_scroll * -1) + self.end_pos
+            
+        def has_won(self, player_rect):
+            if self.hitbox.colliderect(player_rect):
+                won = True
+                return won
     class Pause_menu: # The pause menu.
         def __init__(self):
             pass
@@ -363,6 +406,29 @@ class Game:
 
     class Effects: # Other cool effects.
         pass
+
+    class End_level_screen():
+        def __init__(self):
+            self.image = pygame.image.load(IMAGES["End Screen"])
+            self.hitbox = pygame.Rect(0, 0, 800, 600)
+
+            self.alpha = 0
+            self.image.set_alpha(self.alpha)
+
+        def appear(self, win_state, screen):
+            screen.blit(self.image, self.hitbox)
+            
+            if win_state:
+                if self.alpha < 255:
+                    self.alpha += 5
+                    # Clamp alpha value to 255 to prevent errors
+                    if self.alpha >= 255:
+                        self.alpha = 255
+
+                        pygame.quit()
+                        exit()
+                        
+                    self.image.set_alpha(self.alpha)
 
 if __name__ == "__main__":
     g = Game()
