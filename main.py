@@ -1,14 +1,20 @@
 import pygame
 import sys
+import cProfile
+import psutil
+import os
+
 pygame.init()
 pygame.mixer.init()
 
 running = True
+debug = False
 
 IMAGES = {
     "Background": "images/background.png",
     "Player": "images/ball.png",
     "Spike": "images/spike.png",
+    "Half-Spike": "images/spikehalf.png",
     "Block": "images/block.png",
     "End Wall": "images/endWall.png",
     "End Screen": "images/endScreen.png"
@@ -89,6 +95,8 @@ class Game:
         self.isDead = False
         self.game_over_sound = True
 
+        self.process = psutil.Process(os.getpid())
+
         pygame.display.set_caption("ball video game")
 
         self.clock = pygame.time.Clock()
@@ -96,6 +104,7 @@ class Game:
         self.end_screen = self.End_level_screen()
 
         self.gamer = self.Player(self.screen)
+
         self.ground1 = self.Ground(self.screen, 1)
         self.ground2 = self.Ground(self.screen, 2)
 
@@ -143,7 +152,6 @@ class Game:
 
         self.end.interact(x_scroll=self.scroll_x)
         self.has_won = self.end.has_won(self.gamer.hitbox)
-        print(self.has_won)
 
         if not self.isDead:
             self.scroll_x += 7.3
@@ -205,7 +213,6 @@ class Game:
             else:
                 self.screen.blit(self.video_frames[-1], (0, 0))
             
-            print(self.game_over_frame_idx)
             if round(self.game_over_frame_idx) > 189:
                 running = False
                 pygame.quit()
@@ -220,6 +227,15 @@ class Game:
         # display the fps
         fps = self.clock.get_fps()
         pygame.display.set_caption(f"ball video game - FPS: {fps:.1f}")
+
+    def debug(self):
+        mem_bytes = self.process.memory_info().rss
+        mem_mib = mem_bytes / (1024 * 1024) 
+        cpu_usage = psutil.cpu_percent(interval=1) 
+
+        print(f"Ram useage: {mem_mib:.2f}")
+        print(f"CPU useage (for the whole system): {cpu_usage}")
+        print("Player's falling variable:", self.gamer.falling)
 
     class Player: # The player object.
         def __init__(self, screen):
@@ -240,17 +256,30 @@ class Game:
 
         def playerLoop(self, e):
 
-            if e.type == pygame.KEYDOWN: # handle for presses
-                if self.falling < 3:
-                    if e.key == pygame.K_SPACE:
-                        SOUNDS["Swoosh"].play()
-                        self.gravity_side *= -1
+            # if e.type == pygame.KEYDOWN: # handle for presses
+            #     if self.falling < 4:
+            #         if e.key == pygame.K_SPACE:
+            #             SOUNDS["Swoosh"].play()
+            #             self.gravity_side *= -1
                 
-            if e.type == pygame.MOUSEBUTTONDOWN:
-                if self.falling < 3:
+            # if e.type == pygame.MOUSEBUTTONDOWN:
+            #     if self.falling < 4:
+            #         SOUNDS["Swoosh"].play()
+            #         self.gravity_side *= -1
+
+            keys = pygame.key.get_pressed()
+
+            if keys[pygame.K_SPACE]:
+                if self.falling < 50:
                     SOUNDS["Swoosh"].play()
                     self.gravity_side *= -1
 
+            if pygame.mouse.get_pressed()[0]:
+                if self.falling < 50:
+                    SOUNDS["Swoosh"].play()
+                    self.gravity_side *= -1
+
+            
         def PlayerColision(self, block):
             if self.hitbox.colliderect(block):
                 # Calculate overlaps to determine collision direction
@@ -259,8 +288,8 @@ class Game:
                 self.overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
                 
                 # Vertical collision
-                self.hitbox.y -= self.y_vel
                 self.falling = 0
+                self.hitbox.y -= self.y_vel
                 self.y_vel = 0
             else:
                 self.falling += 1
@@ -419,8 +448,6 @@ class Game:
 
         def appear(self, win_state, screen):
             screen.blit(self.image, self.hitbox)
-            
-            print(self.alpha)
 
             if win_state:
                 if self.alpha < 255:
@@ -436,5 +463,8 @@ if __name__ == "__main__":
     g = Game()
     while running:
         g.mainLoop()
+        if debug:
+            cProfile.run("g.mainLoop()")
+
     pygame.quit()
     exit()
