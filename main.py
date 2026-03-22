@@ -270,12 +270,12 @@ class Game:
             keys = pygame.key.get_pressed()
 
             if keys[pygame.K_SPACE]:
-                if self.falling < 50:
+                if self.falling < 105:
                     SOUNDS["Swoosh"].play()
                     self.gravity_side *= -1
 
             if pygame.mouse.get_pressed()[0]:
-                if self.falling < 50:
+                if self.falling < 105:
                     SOUNDS["Swoosh"].play()
                     self.gravity_side *= -1
 
