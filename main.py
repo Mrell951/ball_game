@@ -8,6 +8,7 @@ pygame.init()
 pygame.mixer.init()
 
 running = True
+paused = False
 debug = False
 
 IMAGES = {
@@ -115,6 +116,8 @@ class Game:
         self.level_data.load_level("level.data")
         self.length = self.level_data.return_length()
 
+        self.pause = self.Pause_menu()
+
         self.end = self.End_wall(self.length, self.screen)
         # Convert loaded block dictionaries to Solid_object_template objects
         self.BLOCKS = [self.Solid_object_template(IMAGES["Block"], b["x"], b["y"], True) for b in self.BLOCKS]
@@ -145,39 +148,43 @@ class Game:
                 global running
                 running = False
 
-            self.gamer.playerLoop(event)
+            if not paused:
+                self.gamer.playerLoop(event)
+
+            self.pause.do_menu(event)
         
         fps = self.clock.get_fps()
         pygame.display.set_caption(f"ball video game - FPS: {fps:.2f}")
 
-        self.end.interact(x_scroll=self.scroll_x)
-        self.has_won = self.end.has_won(self.gamer.hitbox)
+        if not paused:
+            self.end.interact(x_scroll=self.scroll_x)
+            self.has_won = self.end.has_won(self.gamer.hitbox)
 
-        if not self.isDead:
-            self.scroll_x += 7.3
-            self.gamer.PlayerPhysics()
+            if not self.isDead:
+                self.scroll_x += 7.3
+                self.gamer.PlayerPhysics()
+
+                for i in self.BLOCKS:
+                    self.gamer.PlayerColision(i.hitbox)
+                    self.isDead = self.gamer.isDead(i.hitbox, i)
+                
+                for i in self.OBSTICALES:
+                    if self.gamer.hitbox.colliderect(i.hitbox):
+                        self.isDead = self.gamer.kill()
+
+                self.gamer.PlayerColision(self.ground1.hitbox)
+                self.gamer.PlayerColision(self.ground2.hitbox)
 
             for i in self.BLOCKS:
-                self.gamer.PlayerColision(i.hitbox)
-                self.isDead = self.gamer.isDead(i.hitbox, i)
-            
+                i.run_loop(self.scroll_x)
+
             for i in self.OBSTICALES:
-                if self.gamer.hitbox.colliderect(i.hitbox):
-                    self.isDead = self.gamer.kill()
+                i.run_loop(self.scroll_x)
 
-            self.gamer.PlayerColision(self.ground1.hitbox)
-            self.gamer.PlayerColision(self.ground2.hitbox)
-
-        for i in self.BLOCKS:
-            i.run_loop(self.scroll_x)
-
-        for i in self.OBSTICALES:
-            i.run_loop(self.scroll_x)
-
-        if not self.isDead:
-            self.bg.run_loop()
-            self.bg1.run_loop()
-            self.bg2.run_loop()
+            if not self.isDead:
+                self.bg.run_loop()
+                self.bg1.run_loop()
+                self.bg2.run_loop()
 
 
         # Rendering code
@@ -221,6 +228,7 @@ class Game:
         if self.has_won:
             self.end_screen.appear(self.has_won, self.screen)
 
+        self.pause.draw_menu(self.screen)
         pygame.display.flip()
         self.clock.tick(60)
 
@@ -240,8 +248,11 @@ class Game:
     class Player: # The player object.
         def __init__(self, screen):
             self.y_vel = 0
+            self.max_y_vel = 20
+            self.gravity_strength = 1
             self.gravity_side = 1
             self.falling = 0
+            self.on_surface = False
             self.screen = screen
 
             self.overlap_x = 0
@@ -253,46 +264,52 @@ class Game:
             self.player_img = pygame.image.load(IMAGES["Player"])
 
             self.hitbox = pygame.Rect(50, 400, 64, 64)
+            self.jump_pressed = False
 
         def playerLoop(self, e):
-
-            # if e.type == pygame.KEYDOWN: # handle for presses
-            #     if self.falling < 4:
-            #         if e.key == pygame.K_SPACE:
-            #             SOUNDS["Swoosh"].play()
-            #             self.gravity_side *= -1
-                
-            # if e.type == pygame.MOUSEBUTTONDOWN:
-            #     if self.falling < 4:
-            #         SOUNDS["Swoosh"].play()
-            #         self.gravity_side *= -1
-
             keys = pygame.key.get_pressed()
 
-            if keys[pygame.K_SPACE]:
-                if self.falling < 105:
-                    SOUNDS["Swoosh"].play()
-                    self.gravity_side *= -1
+            jump_requested = keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]
 
-            if pygame.mouse.get_pressed()[0]:
-                if self.falling < 105:
-                    SOUNDS["Swoosh"].play()
-                    self.gravity_side *= -1
+            if jump_requested and not self.jump_pressed and self.on_surface:
+                SOUNDS["Swoosh"].play()
+                self.gravity_side *= -1
+                self.y_vel = 0
+                self.on_surface = False
+                self.falling = 1
 
-            
+            self.jump_pressed = jump_requested
+
+        def begin_physics_step(self):
+            if self.on_surface:
+                self.falling = 0
+            else:
+                self.falling += 1
+
+            self.on_surface = False
+
+             
         def PlayerColision(self, block):
             if self.hitbox.colliderect(block):
                 # Calculate overlaps to determine collision direction
 
                 self.overlap_x = min(self.hitbox.right, block.right) - max(self.hitbox.left, block.left)
                 self.overlap_y = min(self.hitbox.bottom, block.bottom) - max(self.hitbox.top, block.top)
-                
-                # Vertical collision
-                self.falling = 0
-                self.hitbox.y -= self.y_vel
-                self.y_vel = 0
-            else:
-                self.falling += 1
+
+                if self.overlap_y <= self.overlap_x:
+                    if self.y_vel * self.gravity_side >= 0:
+                        if self.gravity_side > 0:
+                            self.hitbox.bottom = block.top
+                        else:
+                            self.hitbox.top = block.bottom
+                        self.on_surface = True
+                        self.falling = 0
+                        self.y_vel = 0
+                else:
+                    if self.hitbox.centerx < block.centerx:
+                        self.hitbox.right = block.left
+                    else:
+                        self.hitbox.left = block.right
 
         def isDead(self, block, obj=None): # NOTE: always call this function after the colision or the game will crash (+ this is only for regular blocks) 
             if self.overlap_x < self.overlap_y and self.hitbox.right > block.right:
@@ -306,7 +323,9 @@ class Game:
             return game_over_state 
 
         def PlayerPhysics(self):
-            self.y_vel += 1 * self.gravity_side
+            self.begin_physics_step()
+            self.y_vel += self.gravity_strength * self.gravity_side
+            self.y_vel = max(-self.max_y_vel, min(self.max_y_vel, self.y_vel))
             self.hitbox.y += self.y_vel
 
         def drawPlayer(self):
@@ -428,7 +447,21 @@ class Game:
                 return won
     class Pause_menu: # The pause menu.
         def __init__(self):
-            pass
+            self.hitbox = pygame.Rect(0, 0, 800, 600)
+            self.is_menu_visible = False
+            self.transparent_surface = pygame.Surface((600, 800), pygame.SRCALPHA)
+        
+        def do_menu(self, e):
+            global paused
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
+                    self.is_menu_visible = not self.is_menu_visible
+                    paused = not paused
+        
+        def draw_menu(self, screen):
+            if self.is_menu_visible:
+                screen.fill((0, 0, 0, 128))
+                screen.blit(self.transparent_surface, (0, 0))
 
     class Bot(Player): # Background bot that competes the level with you. (also inherits stuff from the player)
         def __init__(self):
