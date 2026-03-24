@@ -22,8 +22,7 @@ IMAGES = {
 }
 SOUNDS = {
     "Game Over": pygame.mixer.Sound("Audio/sega-rally-15-game-over-yeah1.mp3"),
-    "Swoosh": pygame.mixer.Sound("Audio/swoosh.wav"),
-    "Main song": pygame.mixer.Sound("Audio/105753.mp3")
+    "Swoosh": pygame.mixer.Sound("Audio/swoosh.wav")
 }
 class Game:
     class LevelLoader:
@@ -81,7 +80,7 @@ class Game:
 
         # init
     def __init__(self):
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((800, 600), vsync=1)
         self.has_won = False
         self.scroll_x = 0
 
@@ -135,7 +134,8 @@ class Game:
             except pygame.error:
                 print(f"Could not load {frame_path}")
 
-        self.main_song = SOUNDS["Main song"].play()        
+        pygame.mixer.music.load("Audio/105753.mp3")
+        pygame.mixer.music.play(-1)
 
 
         self.bg = self.Background(0)
@@ -209,7 +209,7 @@ class Game:
         if self.isDead:
             if self.game_over_sound:
                 SOUNDS["Game Over"].play()
-                self.main_song.stop()
+                pygame.mixer.music.stop()
                 self.game_over_sound = False
             # Animate the game over video frame by frame at the top-left corner
             if not hasattr(self, 'game_over_frame_idx'):
@@ -449,19 +449,31 @@ class Game:
         def __init__(self):
             self.hitbox = pygame.Rect(0, 0, 800, 600)
             self.is_menu_visible = False
-            self.transparent_surface = pygame.Surface((600, 800), pygame.SRCALPHA)
+            self.transparent_surface = pygame.Surface((800, 600), pygame.SRCALPHA)
+            self.transparent_surface.fill((0, 0, 0, 128))
+            self.font = pygame.font.SysFont('Arial', 48)
+            self.small_font = pygame.font.SysFont('Arial', 28)
+            self.title_text = self.font.render("Paused...", True, (255, 255, 255))
+            self.resume_text = self.small_font.render("Press ESC to resume...", True, (255, 255, 255))
         
         def do_menu(self, e):
             global paused
             if e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_ESCAPE:
                     self.is_menu_visible = not self.is_menu_visible
+                    if self.is_menu_visible:
+                        pygame.mixer.music.pause()
+                    else:
+                        pygame.mixer.music.unpause()
                     paused = not paused
         
         def draw_menu(self, screen):
             if self.is_menu_visible:
-                screen.fill((0, 0, 0, 128))
                 screen.blit(self.transparent_surface, (0, 0))
+                title_rect = self.title_text.get_rect(center=(400, 250))
+                resume_rect = self.resume_text.get_rect(center=(400, 320))
+                screen.blit(self.title_text, title_rect)
+                screen.blit(self.resume_text, resume_rect)
 
     class Bot(Player): # Background bot that competes the level with you. (also inherits stuff from the player)
         def __init__(self):
