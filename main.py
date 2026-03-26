@@ -7,6 +7,13 @@ import os
 pygame.init()
 pygame.mixer.init()
 
+
+def load_image(path, convert_alpha=True):
+    image = pygame.image.load(path)
+    if convert_alpha:
+        return image.convert_alpha()
+    return image.convert()
+
 running = True
 paused = False
 debug = False
@@ -26,9 +33,9 @@ SOUNDS = {
 }
 class Game:
     class LevelLoader:
-        def __init__(self, filepath, blocks=[], obstacles=[]):
-            self.blocks = blocks
-            self.obstacles = obstacles
+        def __init__(self, filepath, blocks=None, obstacles=None):
+            self.blocks = blocks if blocks is not None else []
+            self.obstacles = obstacles if obstacles is not None else []
             self.level_length = 0
             self.load_level(filepath)
 
@@ -112,7 +119,6 @@ class Game:
         self.OBSTICALES = []
 
         self.level_data = self.LevelLoader("level.data", self.BLOCKS, self.OBSTICALES)
-        self.level_data.load_level("level.data")
         self.length = self.level_data.return_length()
 
         self.pause = self.Pause_menu()
@@ -159,26 +165,28 @@ class Game:
         if not paused:
             self.end.interact(x_scroll=self.scroll_x)
             self.has_won = self.end.has_won(self.gamer.hitbox)
+            blocks = self.BLOCKS
+            obstacles = self.OBSTICALES
 
             if not self.isDead:
-                self.scroll_x += 7.3
+                self.scroll_x += 7.6
                 self.gamer.PlayerPhysics()
 
-                for i in self.BLOCKS:
+                for i in blocks:
                     self.gamer.PlayerColision(i.hitbox)
                     self.isDead = self.gamer.isDead(i.hitbox, i)
                 
-                for i in self.OBSTICALES:
+                for i in obstacles:
                     if self.gamer.hitbox.colliderect(i.hitbox):
                         self.isDead = self.gamer.kill()
 
                 self.gamer.PlayerColision(self.ground1.hitbox)
                 self.gamer.PlayerColision(self.ground2.hitbox)
 
-            for i in self.BLOCKS:
+            for i in blocks:
                 i.run_loop(self.scroll_x)
 
-            for i in self.OBSTICALES:
+            for i in obstacles:
                 i.run_loop(self.scroll_x)
 
             if not self.isDead:
@@ -261,7 +269,7 @@ class Game:
             self.rotate_amount = 0
             self.cached_rotations = {}  # Cache for rotated images to reduce lag
 
-            self.player_img = pygame.image.load(IMAGES["Player"])
+            self.player_img = load_image(IMAGES["Player"])
 
             self.hitbox = pygame.Rect(50, 400, 64, 64)
             self.jump_pressed = False
@@ -355,7 +363,7 @@ class Game:
         def __init__(self, x_offset):
             self.paralax_amount = 2
             self.hitbox = pygame.Rect(x_offset, 0, 800, 600)
-            self.background_image = pygame.image.load(IMAGES["Background"])
+            self.background_image = load_image(IMAGES["Background"], convert_alpha=False)
         
         def run_loop(self):
             self.hitbox.x -= self.paralax_amount
@@ -381,7 +389,7 @@ class Game:
     class Solid_object_template: # Object template for solid objects.
         def __init__(self, sprite, x, y, snap, hitbox_width=64, hitbox_height=64):
             self.hitbox_width = hitbox_width
-            self.sprite = pygame.image.load(sprite)
+            self.sprite = load_image(sprite)
             self.hitbox_height = hitbox_height
             grid_size = hitbox_width
 
@@ -406,7 +414,7 @@ class Game:
         def __init__(self, sprite, x, y, snap, hitbox_width=64, hitbox_height=64, rotation=0):
             super().__init__(sprite, x, y, snap, hitbox_width, hitbox_height)
             self.hitbox_width = hitbox_width
-            self.sprite = pygame.transform.scale(pygame.image.load(sprite), (hitbox_width, hitbox_height))
+            self.sprite = pygame.transform.scale(load_image(sprite), (hitbox_width, hitbox_height))
             self.sprite = pygame.transform.rotate(self.sprite, rotation * 90)
             self.hitbox_height = hitbox_height
             grid_size = hitbox_width
@@ -430,7 +438,7 @@ class Game:
 
     class End_wall: # End wall for completing the level.
         def __init__(self, end_pos, screen):
-            self.image = pygame.image.load(IMAGES["End Wall"])
+            self.image = load_image(IMAGES["End Wall"])
             self.end_pos = end_pos
             self.screen = screen
             self.hitbox = pygame.Rect(end_pos, 0, 512, 600)
@@ -485,7 +493,7 @@ class Game:
     class End_level_screen():
         def __init__(self):
             self.repeats = 0
-            self.image = pygame.image.load(IMAGES["End Screen"])
+            self.image = load_image(IMAGES["End Screen"])
             self.hitbox = pygame.Rect(0, 0, 800, 600)
 
             self.alpha = 0
